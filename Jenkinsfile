@@ -9,6 +9,7 @@ pipeline {
         DOCKER_REPO = 'gyanendrasinha8301/aceest-fitness'
         SONAR_URL = 'http://localhost:9000'
         SONAR_PROJECT_KEY = 'aceest-fitness-a2'
+        K8S_NAMESPACE = 'aceest-fitness'
     }
 
     stages {
@@ -101,6 +102,7 @@ pipeline {
                       requirements.txt \
                       Dockerfile \
                       templates/ \
+                      k8s/ \
                       reports/
                     ls -lh "$ARTIFACT_NAME"
                 '''
@@ -124,6 +126,30 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy to Kubernetes & Verify Rollout (CD)') {
+            steps {
+                sh '''
+                    kubectl apply -f k8s/00-namespace.yaml
+                    kubectl apply -f k8s/03-blue-green.yaml
+                    kubectl apply -f k8s/04-canary.yaml
+                    kubectl apply -f k8s/05-ab-testing.yaml
+                    kubectl apply -f k8s/06-shadow.yaml
+
+                    sed "s|image: ${DOCKER_REPO}:.*|image: ${DOCKER_REPO}:${APP_VERSION}-build-${BUILD_NUMBER}|g" \
+                      k8s/02-rolling-update.yaml | kubectl apply -f -
+
+                    if ! kubectl rollout status deployment/aceest-rolling -n "${K8S_NAMESPACE}" --timeout=120s; then
+                        echo "Rollout failed! Executing automatic rollback..."
+                        kubectl rollout undo deployment/aceest-rolling -n "${K8S_NAMESPACE}"
+                        kubectl rollout status deployment/aceest-rolling -n "${K8S_NAMESPACE}" --timeout=120s
+                        exit 1
+                    fi
+
+                    kubectl get deployments,svc,ingress -n "${K8S_NAMESPACE}"
+                '''
+            }
+        }
     }
 
     post {
@@ -131,10 +157,10 @@ pipeline {
             sh 'docker logout >/dev/null 2>&1 || true'
         }
         success {
-            echo "CI Pipeline SUCCEEDED for ACEest Fitness ${env.APP_VERSION} (Build #${env.BUILD_NUMBER})"
+            echo "Full CI/CD Pipeline SUCCEEDED for ACEest Fitness ${env.APP_VERSION} (Build #${env.BUILD_NUMBER})"
         }
         failure {
-            echo "CI Pipeline FAILED for ACEest Fitness (Build #${env.BUILD_NUMBER})"
+            echo "CI/CD Pipeline FAILED for ACEest Fitness (Build #${env.BUILD_NUMBER})"
         }
     }
 }

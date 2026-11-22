@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aceest-blue
+  namespace: aceest-fitness
+  labels:
+    app: aceest-bluegreen
+    slot: blue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aceest-bluegreen
+      slot: blue
+  template:
+    metadata:
+      labels:
+        app: aceest-bluegreen
+        slot: blue
+        version: v1.0
+    spec:
+      containers:
+        - name: aceest-app
+          image: gyanendrasinha8301/aceest-fitness:v1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "30m"
+              memory: "48Mi"
+            limits:
+              cpu: "150m"
+              memory: "128Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aceest-green
+  namespace: aceest-fitness
+  labels:
+    app: aceest-bluegreen
+    slot: green
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aceest-bluegreen
+      slot: green
+  template:
+    metadata:
+      labels:
+        app: aceest-bluegreen
+        slot: green
+        version: v2.1
+    spec:
+      containers:
+        - name: aceest-app
+          image: gyanendrasinha8301/aceest-fitness:v2.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "30m"
+              memory: "48Mi"
+            limits:
+              cpu: "150m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aceest-bluegreen-svc
+  namespace: aceest-fitness
+spec:
+  selector:
+    app: aceest-bluegreen
+    slot: blue
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aceest-bluegreen-ing
+  namespace: aceest-fitness
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: bluegreen.aceest.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: aceest-bluegreen-svc
+                port:
+                  number: 80
