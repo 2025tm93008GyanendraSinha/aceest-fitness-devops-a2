@@ -107,3 +107,12 @@ def test_add_workout_missing_fields(client):
     """Verify missing required workout fields return 400 Bad Request."""
     response = client.post("/workouts", json={"title": "Missing Category"})
     assert response.status_code == 400
+
+
+def test_add_workout_invalid_duration(client):
+    """Verify non-positive or non-integer workout duration returns 400."""
+    response = client.post(
+        "/workouts",
+        json={"title": "Invalid Plan", "category": "Strength", "duration_mins": -15},
+    )
+    assert response.status_code == 400
