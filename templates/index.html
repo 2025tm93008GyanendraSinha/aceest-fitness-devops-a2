@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ACEest Fitness &amp; Gym - {{ version }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background-color: #f4f6f9; color: #222; }
+        .banner { background-color: #1f4e79; color: #fff; padding: 1.2rem; border-radius: 8px; }
+        .badge { display: inline-block; background: #28a745; padding: 4px 10px; border-radius: 4px; font-size: 0.9rem; }
+        .card { background: #fff; padding: 1.2rem; margin-top: 1rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+        table { width: 100%; border-collapse: collapse; margin-top: 0.8rem; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #eef2f7; }
+    </style>
+</head>
+<body>
+    <div class="banner">
+        <h1>ACEest Fitness &amp; Gym Management Portal</h1>
+        <p>
+            <span class="badge">Version: {{ version }}</span>
+            &nbsp;|&nbsp; Host/Pod: <strong>{{ hostname }}</strong>
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>Registered Gym Clients</h2>
+        {% if clients %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Program</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr>
+                    <td>{{ client.id }}</td>
+                    <td>{{ client.name }}</td>
+                    <td>{{ client.program }}</td>
+                    <td>{{ client.status }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No clients registered yet.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
