@@ -1,11 +1,11 @@
-"""ACEest Fitness & Gym - Modular Flask Web Application (Version 1.0)."""
+"""ACEest Fitness & Gym - Modular Flask Web Application (Version 2.0)."""
 
 import os
 import socket
 import sqlite3
 from flask import Flask, jsonify, render_template, request
 
-APP_VERSION = os.getenv("APP_VERSION", "v1.0")
+APP_VERSION = os.getenv("APP_VERSION", "v2.0")
 DB_PATH = os.getenv("ACEEST_DB_PATH", "aceest_fitness.db")
 DEFAULT_ADMIN_USER = os.getenv("ACEEST_ADMIN_USER", "admin")
 DEFAULT_ADMIN_KEY = os.getenv("ACEEST_ADMIN_KEY", "admin")
@@ -22,7 +22,7 @@ def get_db_connection(db_path=None):
 
 
 def init_db(db_path=None):
-    """Initialize the SQLite database schema if it does not exist."""
+    """Initialize SQLite tables for clients and workout programs."""
     with get_db_connection(db_path) as conn:
         conn.execute(
             """
@@ -34,23 +34,36 @@ def init_db(db_path=None):
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS workouts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                category TEXT NOT NULL,
+                duration_mins INTEGER NOT NULL DEFAULT 30
+            )
+            """
+        )
         conn.commit()
 
 
 @app.route("/", methods=["GET"])
 def home():
-    """Render the main gym dashboard with version and pod metadata."""
+    """Render the main gym dashboard with version, clients, and workouts."""
     init_db()
     with get_db_connection() as conn:
-        rows = conn.execute(
+        client_rows = conn.execute(
             "SELECT id, name, program, status FROM clients ORDER BY id ASC"
         ).fetchall()
-    clients = [dict(row) for row in rows]
+        workout_rows = conn.execute(
+            "SELECT id, title, category, duration_mins FROM workouts ORDER BY id ASC"
+        ).fetchall()
     return render_template(
         "index.html",
         version=APP_VERSION,
         hostname=socket.gethostname(),
-        clients=clients,
+        clients=[dict(row) for row in client_rows],
+        workouts=[dict(row) for row in workout_rows],
     )
 
 
@@ -68,7 +81,11 @@ def version_info():
             "app": "ACEest Fitness & Gym",
             "version": APP_VERSION,
             "hostname": socket.gethostname(),
-            "features": ["client-management", "health-probe"],
+            "features": [
+                "client-management",
+                "health-probe",
+                "workout-plans",
+            ],
         }
     ), 200
 
@@ -122,6 +139,48 @@ def add_client():
             "name": name,
             "program": program,
             "status": status,
+            "version": APP_VERSION,
+        }
+    ), 201
+
+
+@app.route("/workouts", methods=["GET"])
+def list_workouts():
+    """Return all available workout programs as JSON."""
+    init_db()
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, title, category, duration_mins FROM workouts ORDER BY id ASC"
+        ).fetchall()
+    return jsonify([dict(row) for row in rows]), 200
+
+
+@app.route("/workouts", methods=["POST"])
+def add_workout():
+    """Create a new workout program."""
+    payload = request.get_json(silent=True) or {}
+    title = payload.get("title", "").strip()
+    category = payload.get("category", "").strip()
+    duration_mins = payload.get("duration_mins", 30)
+
+    if not title or not category:
+        return jsonify({"error": "Both 'title' and 'category' are required"}), 400
+
+    init_db()
+    with get_db_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO workouts (title, category, duration_mins) VALUES (?, ?, ?)",
+            (title, category, duration_mins),
+        )
+        conn.commit()
+        workout_id = cursor.lastrowid
+
+    return jsonify(
+        {
+            "id": workout_id,
+            "title": title,
+            "category": category,
+            "duration_mins": duration_mins,
             "version": APP_VERSION,
         }
     ), 201
