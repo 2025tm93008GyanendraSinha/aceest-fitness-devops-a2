@@ -5,7 +5,7 @@ import socket
 import sqlite3
 from flask import Flask, jsonify, render_template, request
 
-APP_VERSION = os.getenv("APP_VERSION", "v2.0.1")
+APP_VERSION = os.getenv("APP_VERSION", "v2.1")
 DB_PATH = os.getenv("ACEEST_DB_PATH", "aceest_fitness.db")
 DEFAULT_ADMIN_USER = os.getenv("ACEEST_ADMIN_USER", "admin")
 DEFAULT_ADMIN_KEY = os.getenv("ACEEST_ADMIN_KEY", "admin")
@@ -85,6 +85,7 @@ def version_info():
                 "client-management",
                 "health-probe",
                 "workout-plans",
+                "gym-stats",
             ],
         }
     ), 200
@@ -191,6 +192,26 @@ def add_workout():
             "version": APP_VERSION,
         }
     ), 201
+
+
+@app.route("/stats", methods=["GET"])
+def gym_stats():
+    """Return summary counts of registered clients and workout programs."""
+    init_db()
+    with get_db_connection() as conn:
+        client_count = conn.execute(
+            "SELECT COUNT(*) FROM clients"
+        ).fetchone()[0]
+        workout_count = conn.execute(
+            "SELECT COUNT(*) FROM workouts"
+        ).fetchone()[0]
+    return jsonify(
+        {
+            "version": APP_VERSION,
+            "total_clients": client_count,
+            "total_workouts": workout_count,
+        }
+    ), 200
 
 
 if __name__ == "__main__":

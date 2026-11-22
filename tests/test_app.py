@@ -116,3 +116,20 @@ def test_add_workout_invalid_duration(client):
         json={"title": "Invalid Plan", "category": "Strength", "duration_mins": -15},
     )
     assert response.status_code == 400
+
+
+def test_stats_endpoint(client):
+    """Verify /stats returns accurate client and workout counts."""
+    client.post(
+        "/clients",
+        json={"name": "Meera Nair", "program": "Yoga Flow"},
+    )
+    client.post(
+        "/workouts",
+        json={"title": "Morning Mobility", "category": "Yoga", "duration_mins": 30},
+    )
+    response = client.get("/stats")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["total_clients"] == 1
+    assert data["total_workouts"] == 1
