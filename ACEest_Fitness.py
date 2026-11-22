@@ -5,7 +5,7 @@ import socket
 import sqlite3
 from flask import Flask, jsonify, render_template, request
 
-APP_VERSION = os.getenv("APP_VERSION", "v2.0")
+APP_VERSION = os.getenv("APP_VERSION", "v2.0.1")
 DB_PATH = os.getenv("ACEEST_DB_PATH", "aceest_fitness.db")
 DEFAULT_ADMIN_USER = os.getenv("ACEEST_ADMIN_USER", "admin")
 DEFAULT_ADMIN_KEY = os.getenv("ACEEST_ADMIN_KEY", "admin")
@@ -165,6 +165,13 @@ def add_workout():
 
     if not title or not category:
         return jsonify({"error": "Both 'title' and 'category' are required"}), 400
+
+    if (
+        isinstance(duration_mins, bool)
+        or not isinstance(duration_mins, int)
+        or duration_mins <= 0
+    ):
+        return jsonify({"error": "'duration_mins' must be a positive integer"}), 400
 
     init_db()
     with get_db_connection() as conn:
