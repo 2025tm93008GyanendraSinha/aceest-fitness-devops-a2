@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aceest-smoke-test
+  namespace: aceest-fitness
+  labels:
+    app: aceest-smoke-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aceest-smoke-test
+  template:
+    metadata:
+      labels:
+        app: aceest-smoke-test
+        version: v2.1
+    spec:
+      containers:
+        - name: aceest-app
+          image: gyanendrasinha8301/aceest-fitness:v2.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "160Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aceest-smoke-svc
+  namespace: aceest-fitness
+spec:
+  selector:
+    app: aceest-smoke-test
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aceest-smoke-ingress
+  namespace: aceest-fitness
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: aceest.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: aceest-smoke-svc
+                port:
+                  number: 80
