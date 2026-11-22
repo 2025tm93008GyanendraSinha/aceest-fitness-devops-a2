@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aceest-ab-v1
+  namespace: aceest-fitness
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aceest-ab
+      variant: group-a
+  template:
+    metadata:
+      labels:
+        app: aceest-ab
+        variant: group-a
+        version: v1.0
+    spec:
+      containers:
+        - name: aceest-app
+          image: gyanendrasinha8301/aceest-fitness:v1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "30m"
+              memory: "48Mi"
+            limits:
+              cpu: "150m"
+              memory: "128Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aceest-ab-v2
+  namespace: aceest-fitness
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aceest-ab
+      variant: group-b
+  template:
+    metadata:
+      labels:
+        app: aceest-ab
+        variant: group-b
+        version: v2.1
+    spec:
+      containers:
+        - name: aceest-app
+          image: gyanendrasinha8301/aceest-fitness:v2.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "30m"
+              memory: "48Mi"
+            limits:
+              cpu: "150m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aceest-ab-v1-svc
+  namespace: aceest-fitness
+spec:
+  selector:
+    app: aceest-ab
+    variant: group-a
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aceest-ab-v2-svc
+  namespace: aceest-fitness
+spec:
+  selector:
+    app: aceest-ab
+    variant: group-b
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aceest-ab-main-ing
+  namespace: aceest-fitness
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: abtest.aceest.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: aceest-ab-v1-svc
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aceest-ab-beta-ing
+  namespace: aceest-fitness
+  annotations:
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-by-header: "X-User-Group"
+    nginx.ingress.kubernetes.io/canary-by-header-value: "beta"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: abtest.aceest.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: aceest-ab-v2-svc
+                port:
+                  number: 80
